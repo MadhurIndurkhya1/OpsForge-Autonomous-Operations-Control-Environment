@@ -1,0 +1,158 @@
+# openenv.yaml
+# OpsForge: Autonomous Operations Control Environment
+# OpenEnv-compliant specification
+
+name: OpsForge
+version: "1.0.0"
+description: >
+  A simulated operations control environment where an AI agent manages
+  an incoming stream of tickets (bugs, complaints, fraud, requests).
+  The agent must triage, prioritise, and resolve tickets under constrained
+  engineer-hours and budget, while racing against per-ticket deadlines.
+
+author: OpsForge Team
+license: MIT
+
+# ── Environment ────────────────────────────────────────────────────────────
+environment:
+  module: opsforge.environment
+  class: OpsForgeEnv
+
+  # Default configuration (all values are overridable at runtime)
+  config:
+    max_steps: 20
+    initial_engineers: 10
+    initial_budget: 5000.0
+    initial_tickets: 5
+    new_tickets_per_step: 1
+
+  api:
+    reset:
+      description: Reset the environment and return the initial observation.
+      returns: Observation
+
+    step:
+      description: Execute one action and advance the environment by one time step.
+      input: Action
+      returns:
+        observation: Observation
+        reward: Reward
+        done: bool
+        info: dict
+
+    state:
+      description: Return a snapshot of the current internal state.
+      returns: State
+
+# ── Observation space ──────────────────────────────────────────────────────
+observation:
+  model: opsforge.models.Observation
+  fields:
+    tickets:
+      type: List[Ticket]
+      description: All unresolved tickets currently in the queue.
+    resources:
+      type: Resources
+      description: Available engineers, budget, and time remaining.
+    step:
+      type: int
+      description: Current step number (0-indexed).
+
+# ── Action space ───────────────────────────────────────────────────────────
+action:
+  model: opsforge.models.Action
+  fields:
+    ticket_id:
+      type: str
+      description: ID of the ticket to work on this step.
+    assign_engineers:
+      type: int
+      min: 1
+      description: Engineer-hours to dedicate to this ticket.
+    spend_budget:
+      type: float
+      min: 0
+      description: Budget (in $) to allocate to this ticket.
+    priority:
+      type: int
+      min: 1
+      max: 5
+      description: Agent-assigned priority label (for logging / reward shaping).
+
+# ── Reward ─────────────────────────────────────────────────────────────────
+reward:
+  model: opsforge.models.Reward
+  type: float
+  range: [-inf, +inf]
+  description: >
+    Partial-credit scalar reward. Positive for resolving high-value / urgent
+    tickets efficiently; negative for wasted resources, resolution failures,
+    and missed deadlines.
+  components:
+    resolution_score:
+      formula: severity × customer_value × 0.1 + deadline_bonus
+      note: Applied only on successful resolution (80 % probability).
+    failure_penalty:
+      formula: -(severity × 5)
+      note: Applied on resolution failure (20 % probability).
+    waste_penalty:
+      formula: -(over_engineers × 2 + over_budget × 0.01)
+      note: Penalises allocating more than minimum required resources.
+    deadline_miss_penalty:
+      formula: -(customer_value × 0.05 × severity)
+      note: Applied when a ticket's deadline reaches 0 before resolution.
+
+# ── Tasks ──────────────────────────────────────────────────────────────────
+tasks:
+  - id: easy_prioritization
+    module: tasks.tasks
+    class: EasyTask
+    difficulty: easy
+    description: >
+      Pick the most urgent ticket every step. Resources are generous.
+      Evaluated by priority accuracy (≥70 % = PASS).
+
+  - id: medium_resource_efficiency
+    module: tasks.tasks
+    class: MediumTask
+    difficulty: medium
+    description: >
+      Resolve tickets while minimising resource waste.
+      Constrained budget and engineers. Evaluated by total reward > 0.
+
+  - id: hard_full_episode
+    module: tasks.tasks
+    class: HardTask
+    difficulty: hard
+    description: >
+      Full 20-step episode with tight resources and a heavy ticket stream.
+      Evaluated by composite score and resolve rate ≥50 %.
+
+# ── Inference ──────────────────────────────────────────────────────────────
+inference:
+  script: inference.py
+  env_vars:
+    API_BASE_URL:
+      default: https://api.openai.com/v1
+      description: Base URL of the OpenAI-compatible API endpoint.
+    MODEL_NAME:
+      default: gpt-4o-mini
+      description: Model identifier to use for inference.
+    HF_TOKEN:
+      description: API key / HuggingFace token used as Bearer credential.
+  usage: |
+    export API_BASE_URL=https://api.openai.com/v1
+    export MODEL_NAME=gpt-4o-mini
+    export HF_TOKEN=sk-...
+    python inference.py --task hard
+
+# ── Docker ─────────────────────────────────────────────────────────────────
+docker:
+  image: opsforge:latest
+  build: "docker build -t opsforge ."
+  run: |
+    docker run --rm \
+      -e API_BASE_URL=$API_BASE_URL \
+      -e MODEL_NAME=$MODEL_NAME \
+      -e HF_TOKEN=$HF_TOKEN \
+      opsforge python inference.py --task hard
