@@ -6,8 +6,8 @@ OpsForge is a realistic simulation environment designed to model
 **real-world operational decision-making under constraints**.
 
 Unlike traditional AI tasks that focus on isolated predictions, OpsForge
-evaluates how an agent: - prioritizes multiple tasks\
-- manages limited resources\
+evaluates how an agent: - prioritizes multiple tasks
+- manages limited resources
 - handles time pressure and uncertainty
 
 ------------------------------------------------------------------------
@@ -15,13 +15,13 @@ evaluates how an agent: - prioritizes multiple tasks\
 ## 🎯 Problem Statement
 
 Modern systems (SaaS, fintech, logistics) constantly deal with: - bug
-reports\
-- fraud alerts\
-- customer complaints\
+reports
+- fraud alerts
+- customer complaints
 - service requests
 
-These must be handled with: - limited engineers\
-- limited budget\
+These must be handled with: - limited engineers
+- limited budget
 - strict deadlines
 
 👉 OpsForge simulates this complexity in a controlled environment.
@@ -51,12 +51,11 @@ At each step:
 ------------------------------------------------------------------------
 
 ## 🔥 Key Features
-
--   ✅ Real-world inspired environment\
--   ✅ Resource constraints (engineers, budget, time)\
--   ✅ Deadline-based urgency\
--   ✅ Stochastic outcomes (uncertainty)\
--   ✅ Multi-step decision-making\
+-   ✅ Real-world inspired environment
+-   ✅ Resource constraints (engineers, budget, time)
+-   ✅ Deadline-based urgency
+-   ✅ Stochastic outcomes (uncertainty)
+-   ✅ Multi-step decision-making
 -   ✅ Reward with partial scoring
 
 ------------------------------------------------------------------------
@@ -146,9 +145,9 @@ python inference.py --task hard --no-llm
 
 OpsForge models real-world systems such as:
 
--   SaaS incident management\
--   Fraud detection pipelines\
--   Customer support prioritization\
+-   SaaS incident management
+-   Fraud detection pipelines
+-   Customer support prioritization
 -   Logistics and delivery optimization
 
 👉 It can act as a **decision-support simulation system**.
@@ -157,9 +156,9 @@ OpsForge models real-world systems such as:
 
 ## 🧠 Key Insights
 
--   Greedy strategies fail in dynamic environments\
--   Urgency (deadlines) must be prioritized\
--   Resource conservation is critical\
+-   Greedy strategies fail in dynamic environments
+-   Urgency (deadlines) must be prioritized
+-   Resource conservation is critical
 -   Long-term planning improves performance
 
 ------------------------------------------------------------------------
