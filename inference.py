@@ -2,13 +2,11 @@
 OpsForge Inference Script
 -------------------------
 Runs a full episode using an LLM (via OpenAI-compatible API) as the agent.
-
 Environment variables
 ---------------------
 API_BASE_URL   -- e.g. https://api.openai.com/v1  or a local endpoint
 MODEL_NAME     -- e.g. gpt-4o-mini
 HF_TOKEN       -- your API key / HuggingFace token (used as Bearer token)
-
 Usage
 -----
     python inference.py                   # LLM agent, hard task
@@ -45,9 +43,7 @@ Each step you receive a JSON observation containing:
   - tickets: list of open tickets (id, type, severity 1-5, deadline, customer_value)
   - resources: { engineers, budget, time_remaining }
   - step: current step number
-
 Your job is to pick ONE ticket to work on and decide how many resources to spend.
-
 Rules:
 - assign_engineers must be >= 1 and <= available engineers
 - spend_budget must be >= 0 and <= available budget
@@ -56,7 +52,6 @@ Rules:
     severity 5 -> 5 engineers, $1000 budget
 - Do NOT over-spend; waste is penalised.
 - Prefer high-severity, high-customer_value tickets with short deadlines.
-
 You MUST respond with ONLY valid JSON in this exact shape:
 {
   "ticket_id": "<id of chosen ticket>",
@@ -119,37 +114,36 @@ class LLMAgent:
 # ---------------------------------------------------------------------------
 
 class HeuristicAgent:
-    """Improved heuristic with urgency awareness"""
-
     def decide(self, obs: Observation) -> Action:
-        if not obs.tickets:
-            raise ValueError("No tickets to act on")
+      if not obs.tickets:
+        raise ValueError("No tickets")
 
-        # Step 1: urgent tickets first
-        urgent_tickets = [t for t in obs.tickets if t.deadline <= 2]
+    # 🔥 1. Strict deadline priority
+      ticket = min(
+        obs.tickets,
+        key=lambda t: (t.deadline, -t.severity)
+      )
 
-        if urgent_tickets:
-            ticket = max(urgent_tickets, key=lambda t: t.severity)
-        else:
-            ticket = max(
-                obs.tickets,
-                key=lambda t: (
-                    -t.deadline,
-                    t.severity,
-                    t.customer_value
-                )
-            )
+    # 🔥 2. Engineer conservation (VERY IMPORTANT)
+      if obs.resources.engineers > 5:
+        engineers = 1
+      else:
+        engineers = 1   # always minimal usage
 
-        # Step 2: controlled resource usage
-        engineers = max(1, min(2, obs.resources.engineers))
-        budget = min(200.0, obs.resources.budget)
+    # 🔥 3. Budget conservation (CRITICAL FIX)
+      if obs.resources.budget > 1500:
+         budget = 100
+      elif obs.resources.budget > 500:
+        budget = 50
+      else:
+        budget = 0
 
-        return Action(
-            ticket_id=ticket.id,
-            assign_engineers=engineers,
-            spend_budget=budget,
-            priority=ticket.severity,
-        )
+      return Action(
+        ticket_id=ticket.id,
+        assign_engineers=engineers,
+        spend_budget=budget,
+        priority=ticket.severity,
+      )
 
 # ---------------------------------------------------------------------------
 # Episode runner
@@ -249,16 +243,25 @@ def run_episode(task_name: str, use_llm: bool = True, verbose: bool = True) -> D
 
 def main():
     parser = argparse.ArgumentParser(description="OpsForge inference runner")
-    parser.add_argument("--task",   default="hard", choices=["easy", "medium", "hard"])
     parser.add_argument("--no-llm", action="store_true", help="Use heuristic agent (no API key)")
     parser.add_argument("--quiet",  action="store_true", help="Suppress per-step output")
     args = parser.parse_args()
 
+    print("\n===== RUNNING MEDIUM TASK =====\n")
     run_episode(
-        task_name=args.task,
+        task_name="medium",
         use_llm=not args.no_llm,
         verbose=not args.quiet,
     )
+
+    print("\n===== RUNNING HARD TASK =====\n")
+    run_episode(
+        task_name="hard",
+        use_llm=not args.no_llm,
+        verbose=not args.quiet,
+    )
+
+
 
 
 if __name__ == "__main__":
